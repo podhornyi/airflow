@@ -107,6 +107,10 @@ class KubernetesJobWatcher(multiprocessing.Process, LoggingMixin):
                     "There was a timeout error accessing the Kube API. Retrying request.", exc_info=True
                 )
                 time.sleep(1)
+            except ApiException as e:
+                if e.status == 410:
+                    self.log.warning('Watch is gone due to resource too old, resetting resource initial: "0"')
+                    self.resource_version = '0'
             except Exception:
                 self.log.exception('Unknown error in KubernetesJobWatcher. Failing')
                 raise
