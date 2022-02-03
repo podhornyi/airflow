@@ -108,9 +108,23 @@ class KubernetesJobWatcher(multiprocessing.Process, LoggingMixin):
                 )
                 time.sleep(1)
             except ApiException as e:
+                """
+                docstring FROM watch.Watch():
+                    Note that watching an API resource can expire. The method tries to
+                    resume automatically once from the last result, but if that last result
+                    is too old as well, an `ApiException` exception will be thrown with
+                    ``code`` 410. In that case you have to recover yourself, probably
+                    by listing the API resource to obtain the latest state and then
+                    watching from that state on by setting ``resource_version`` to
+                    one returned from listing.
+                """
                 if e.status == 410:
+                    # have to not raise to allow recreate Watch() inside self._run()
                     self.log.warning('Watch is gone due to resource too old, resetting resource initial: "0"')
-                    self.resource_version = '0'
+                    self.resource_version = '0'  # initial value
+                else:
+                    self.log.exception('Unknown error in KubernetesJobWatcher. Failing')
+                    raise
             except Exception:
                 self.log.exception('Unknown error in KubernetesJobWatcher. Failing')
                 raise
